@@ -462,7 +462,7 @@ bool CTFKnife::IsBehindAndFacingTarget( CTFPlayer *pTarget )
 
 	// Get owner forward view vector
 	Vector vecOwnerForward;
-	AngleVectors( pOwner->GetAbsAngles(), &vecOwnerForward, NULL, NULL );
+	AngleVectors( pOwner->EyeAngles(), &vecOwnerForward, NULL, NULL );
 	vecOwnerForward.z = 0.0f;
 	vecOwnerForward.NormalizeInPlace();
 
