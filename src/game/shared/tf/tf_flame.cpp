@@ -673,6 +673,8 @@ bool CTFFlameManager::ShouldCollide( CBaseEntity *pEnt ) const
 	return true;
 }
 
+extern ConVar friendlyfire;
+
 void CTFFlameManager::OnCollide( CBaseEntity *pEnt, int iPointIndex )
 {
 	tmZone( TELEMETRY_LEVEL0, TMZF_NONE, "%s", __FUNCTION__ );
@@ -698,7 +700,7 @@ void CTFFlameManager::OnCollide( CBaseEntity *pEnt, int iPointIndex )
 	if ( !BCanBurnEntityThisFrame( pEnt ) )
 		return;
 
-	if ( pEnt->IsPlayer() && pEnt->InSameTeam( pAttacker ) )
+	if ( pEnt->IsPlayer() && pEnt->InSameTeam( pAttacker ) && !friendlyfire.GetBool() )
 	{
 		CTFPlayer *pPlayer = ToTFPlayer( pEnt );
 

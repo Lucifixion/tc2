@@ -6782,7 +6782,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 		#endif
 	}
 
-	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) )
+	if ( pTFAttacker && pVictim && pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) && pTFAttacker->GetTeamNumber() != pVictim->GetTeamNumber() )
 	{
 		if ( pTFAttacker->GetActiveWeapon() )
 		{
@@ -7514,12 +7514,16 @@ float CTFGameRules::ApplyOnDamageAliveModifyRules( const CTakeDamageInfo &info, 
 				}
 			}
 
-			int iHypeOnDamage = 0;
-			CALL_ATTRIB_HOOK_INT_ON_OTHER( pTFAttacker, iHypeOnDamage, hype_on_damage );
-			if ( iHypeOnDamage )
+			// Don't give scouts hype for being total asswads
+			if ( pTFAttacker->GetTeamNumber() != pVictim->GetTeamNumber() )
 			{
-				float flHype = RemapValClamped( flRealDamage, 1.f, 200.f, 1.f, 50.f );
-				pTFAttacker->m_Shared.SetScoutHypeMeter( Min( 100.f, flHype + pTFAttacker->m_Shared.GetScoutHypeMeter() ) );
+				int iHypeOnDamage = 0;
+				CALL_ATTRIB_HOOK_INT_ON_OTHER( pTFAttacker, iHypeOnDamage, hype_on_damage );
+				if ( iHypeOnDamage )
+				{
+					float flHype = RemapValClamped( flRealDamage, 1.f, 200.f, 1.f, 50.f );
+					pTFAttacker->m_Shared.SetScoutHypeMeter( Min( 100.f, flHype + pTFAttacker->m_Shared.GetScoutHypeMeter() ) );
+				}
 			}
 		}
 	}

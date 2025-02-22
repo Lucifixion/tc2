@@ -365,7 +365,7 @@ void JarExplode( int iEntIndex, CTFPlayer *pAttacker, CBaseEntity *pOriginalWeap
 				continue;
 
 			// Drench the target.
-			if ( pPlayer->GetTeamNumber() != iTeam )
+			if ( pPlayer != pAttacker && (pPlayer->GetTeamNumber() != iTeam || friendlyfire.GetBool()) )
 			{
 				if ( TFGameRules() && TFGameRules()->IsTruceActive() )
 					continue;
@@ -1030,7 +1030,7 @@ void CTFProjectile_Cleaver::OnHit( CBaseEntity *pOther )
 	if ( pPlayer->m_Shared.IsInvulnerable() || pPlayer->m_Shared.InCond( TF_COND_INVULNERABLE_WEARINGOFF ) )
 		return;
 
-	if ( pPlayer->GetTeamNumber() == pOwner->GetTeamNumber() )
+	if ( pPlayer->GetTeamNumber() == pOwner->GetTeamNumber() && !friendlyfire.GetBool() )
 		return;
 
 	if ( TFGameRules() && TFGameRules()->IsTruceActive() && pOwner->IsTruceValidForEnt() )

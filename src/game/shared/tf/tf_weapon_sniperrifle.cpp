@@ -49,6 +49,8 @@ void ToolFramework_RecordMaterialParams( IMaterial *pMaterial );
 ConVar tf_sniper_fullcharge_bell( "tf_sniper_fullcharge_bell", "0", FCVAR_ARCHIVE );
 #endif
 
+extern ConVar friendlyfire;
+
 //=============================================================================
 //
 // Weapon Sniper Rifles tables.
@@ -655,7 +657,7 @@ void CTFSniperRifle::ApplyChargeSpeedModifications( float &flBaseRef )
 		UTIL_TraceLine( vShootPos, vShootPos + vForward * m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flRange, MASK_BLOCKLOS_AND_NPCS, pPlayer, COLLISION_GROUP_NONE, &tr );
 		
 		CTFPlayer *pTarget = ToTFPlayer( tr.m_pEnt );
-		if ( pTarget && pTarget->IsAlive() && pTarget->GetTeamNumber() != pPlayer->GetTeamNumber() && 
+		if ( pTarget && pTarget->IsAlive() && (pTarget->GetTeamNumber() != pPlayer->GetTeamNumber() || friendlyfire.GetBool()) &&
 			 !( pTarget->m_Shared.IsStealthed() && !pTarget->m_Shared.InCond( TF_COND_STEALTHED_BLINK ) ) )
 		{
 			CALL_ATTRIB_HOOK_FLOAT( flBaseRef, mult_sniper_charge_per_sec_with_enemy_under_crosshair );
@@ -1167,7 +1169,7 @@ void CTFSniperRifle::ExplosiveHeadShot( CTFPlayer *pAttacker, CTFPlayer *pVictim
 		if ( pObjects[i] == pVictim )
 			continue;
 
-		if ( pAttacker->InSameTeam( pObjects[i] ) )
+		if ( pAttacker->InSameTeam( pObjects[i] ) || !friendlyfire.GetBool() )
 			continue;
 
 		if ( !pVictim->FVisible( pObjects[i], MASK_OPAQUE ) )
@@ -1726,7 +1728,7 @@ void CTFSniperRifleDecap::OnPlayerKill( CTFPlayer *pVictim, const CTakeDamageInf
 	BaseClass::OnPlayerKill( pVictim, info );
 
 	CTFPlayer *pPlayer = ToTFPlayer( GetOwnerEntity() );
-	if ( pPlayer && IsHeadshot( info.GetDamageCustom() ) )
+	if ( pPlayer && IsHeadshot( info.GetDamageCustom() ) && pVictim->GetTeamNumber() != pPlayer->GetTeamNumber() )
 	{
 		// If we got a headshot kill, increment our number of decapitations.
 		int iDecaps = pPlayer->m_Shared.GetDecapitations() + 1;

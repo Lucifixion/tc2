@@ -864,7 +864,7 @@ void CTFStunBall::PipebombTouch( CBaseEntity *pOther )
 	if ( pOther == GetThrower() )
 		return;
 
-	if ( !InSameTeam( pOther ) && pOther->m_takedamage != DAMAGE_NO )
+	if ( (!InSameTeam( pOther ) || friendlyfire.GetBool()) && pOther->m_takedamage != DAMAGE_NO )
 	{
 		ApplyBallImpactEffectOnVictim( pOther );
 	}
@@ -1262,7 +1262,7 @@ void CTFBall_Ornament::PipebombTouch( CBaseEntity *pOther )
 	// Explode (does radius damage, triggers particles and sound effects).
 	Explode( &pTrace, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE );
 
-	if ( !InSameTeam( pOther ) && pOther->m_takedamage != DAMAGE_NO )
+	if ( (!InSameTeam( pOther ) || friendlyfire.GetBool()) && pOther->m_takedamage != DAMAGE_NO)
 	{
 		ApplyBallImpactEffectOnVictim( pOther );
 	}

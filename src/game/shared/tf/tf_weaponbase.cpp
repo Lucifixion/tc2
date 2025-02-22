@@ -5048,18 +5048,6 @@ void CTFWeaponBase::ApplyOnHitAttributes( CBaseEntity *pVictimBaseEntity, CTFPla
 		iModHealthOnHit = Max( 3, (int)( (float)iModHealthOnHit * flScale ) );
 	}
 
-	// Charge meter on hit
-	float flChargeRefill = 0.0f;
-	CALL_ATTRIB_HOOK_FLOAT( flChargeRefill, charge_meter_on_hit );
-	if ( flChargeRefill > 0 )
-	{
-		if ( pAttacker->m_Shared.GetCarryingRuneType() != RUNE_NONE )
-		{
-			flChargeRefill *= 0.2f;
-		}
-		pAttacker->m_Shared.SetDemomanChargeMeter( pAttacker->m_Shared.GetDemomanChargeMeter() + flChargeRefill * 100.0f );
-	}
-
 	// Speed on hit
 	int iSpeedBoostOnHit = 0;
 	CALL_ATTRIB_HOOK_INT( iSpeedBoostOnHit, speed_boost_on_hit );
@@ -5070,6 +5058,21 @@ void CTFWeaponBase::ApplyOnHitAttributes( CBaseEntity *pVictimBaseEntity, CTFPla
 
 	if ( pVictim )
 	{
+		if ( pVictim->GetTeamNumber() != GetTeamNumber() )
+		{
+			// Charge meter on hit
+			float flChargeRefill = 0.0f;
+			CALL_ATTRIB_HOOK_FLOAT( flChargeRefill, charge_meter_on_hit );
+			if ( flChargeRefill > 0 )
+			{
+				if ( pAttacker->m_Shared.GetCarryingRuneType() != RUNE_NONE )
+				{
+					flChargeRefill *= 0.2f;
+				}
+				pAttacker->m_Shared.SetDemomanChargeMeter( pAttacker->m_Shared.GetDemomanChargeMeter() + flChargeRefill * 100.0f );
+			}
+		}
+
 		if ( pVictim->m_Shared.InCond( TF_COND_MAD_MILK ) )
 		{
 			int nAmount = info.GetDamage() * 0.6f;
@@ -5272,7 +5275,7 @@ void CTFWeaponBase::ApplyOnHitAttributes( CBaseEntity *pVictimBaseEntity, CTFPla
 				if ( !pObjects[i]->IsAlive() )
 					continue;
 
-				if ( pObjects[i]->GetTeamNumber() != pVictim->GetTeamNumber() )
+				if ( pObjects[i]->GetTeamNumber() != pVictim->GetTeamNumber() && !friendlyfire.GetBool() )
 					continue;
 
 				if ( !FVisible( pObjects[i], MASK_OPAQUE ) )

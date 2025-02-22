@@ -904,7 +904,7 @@ void CTFWeaponBaseMelee::DoMeleeDamage( CBaseEntity* ent, trace_t& trace, float 
 		{
 			CTFPlayer *pVictimPlayer = ToTFPlayer( ent );
 
-			if ( pVictimPlayer && pVictimPlayer->CanBeForcedToLaugh() && ( pPlayer->GetTeamNumber() != pVictimPlayer->GetTeamNumber() ) )
+			if ( pVictimPlayer && pVictimPlayer->CanBeForcedToLaugh() && ( pPlayer->GetTeamNumber() != pVictimPlayer->GetTeamNumber() || friendlyfire.GetBool() ) )
 			{
 				// force victim to laugh!
 				pVictimPlayer->Taunt( TAUNT_MISC_ITEM, MP_CONCEPT_TAUNT_LAUGH );
@@ -923,7 +923,7 @@ void CTFWeaponBaseMelee::DoMeleeDamage( CBaseEntity* ent, trace_t& trace, float 
 		{
 			CTFPlayer *pVictimPlayer = ToTFPlayer( ent );
 
-			if ( pVictimPlayer && pVictimPlayer->CanBeForcedToLaugh() && ( pPlayer->GetTeamNumber() != pVictimPlayer->GetTeamNumber() ) )
+			if ( pVictimPlayer && pVictimPlayer->CanBeForcedToLaugh() && ( pPlayer->GetTeamNumber() != pVictimPlayer->GetTeamNumber() || friendlyfire.GetBool() ) )
 			{
 				CTFWeaponBase *myWeapon = pPlayer->GetActiveTFWeapon();
 				CTFWeaponBase *theirWeapon = pVictimPlayer->GetActiveTFWeapon();
@@ -974,7 +974,7 @@ void CTFWeaponBaseMelee::DoMeleeDamage( CBaseEntity* ent, trace_t& trace, float 
 
 #endif
 	// Don't impact trace friendly players or objects
-	if ( ent && ent->GetTeamNumber() != pPlayer->GetTeamNumber() )
+	if ( ent && ent->GetTeamNumber() != pPlayer->GetTeamNumber() || friendlyfire.GetBool() )
 	{
 #ifdef CLIENT_DLL
 		UTIL_ImpactTrace( &trace, DMG_CLUB );

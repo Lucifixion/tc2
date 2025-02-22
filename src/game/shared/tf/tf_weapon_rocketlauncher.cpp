@@ -416,12 +416,17 @@ void CTFRocketLauncher_AirStrike::OnPlayerKill( CTFPlayer *pVictim, const CTakeD
 	if ( !pOwner )
 		return;
 
-	int iDecap = pOwner->m_Shared.GetDecapitations() + 1;
+	int iDecap = pOwner->m_Shared.GetDecapitations();
 	if ( pVictim )
 	{
 		iDecap += pVictim->m_Shared.GetDecapitations();
+
+		if ( pVictim->GetTeamNumber() != pOwner->GetTeamNumber() )
+		{
+			iDecap++;
+		}
 	}
-	pOwner->m_Shared.SetDecapitations( iDecap );	
+	pOwner->m_Shared.SetDecapitations( iDecap );
 
 	int iClipSizeOnKills = 0;
 	CALL_ATTRIB_HOOK_INT( iClipSizeOnKills, clipsize_increase_on_kill );

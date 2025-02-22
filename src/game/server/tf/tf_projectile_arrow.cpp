@@ -475,7 +475,7 @@ bool CTFProjectile_Arrow::StrikeTarget( mstudiobbox_t *pBox, CBaseEntity *pOther
 			}
 		}
 
-		if ( !InSameTeam( pOther ) )
+		if ( !InSameTeam( pOther ) || (friendlyfire.GetBool() && !(m_iProjectileType == TF_PROJECTILE_HEALING_BOLT || m_iProjectileType == TF_PROJECTILE_FESTIVE_HEALING_BOLT)) )
 		{
 			IScorer *pScorerInterface = dynamic_cast<IScorer*>( pAttacker );
 			if ( pScorerInterface )
@@ -741,7 +741,7 @@ void CTFProjectile_Arrow::ArrowTouch( CBaseEntity *pOther )
 	if ( !pOther )
 		return;
 
-	bool bShield = pOther->IsCombatItem() && !InSameTeam( pOther );
+	bool bShield = pOther->IsCombatItem() && (!InSameTeam( pOther ) || friendlyfire.GetBool());
 	CTFPumpkinBomb *pPumpkinBomb = dynamic_cast< CTFPumpkinBomb * >( pOther );
 
 	if ( pOther->IsSolidFlagSet( FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS ) && !pPumpkinBomb && !bShield )
@@ -806,7 +806,7 @@ void CTFProjectile_Arrow::ArrowTouch( CBaseEntity *pOther )
 
 	// If we hit a hitbox, stop tracing.
 	mstudiobbox_t *closest_box = NULL;
-	if ( tr.m_pEnt && tr.m_pEnt == pOther && tr.m_pEnt->GetTeamNumber() != GetTeamNumber() )
+	if ( tr.m_pEnt && tr.m_pEnt == pOther && (tr.m_pEnt->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 	{
 		// This means the arrow was true and was flying directly at a hitbox on the target.
 		// We'll attach to that hitbox.

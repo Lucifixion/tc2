@@ -67,6 +67,7 @@ PRECACHE_REGISTER_FN(PrecacheRing);
 ConVar tf_bison_tick_time( "tf_bison_tick_time", "0.025", FCVAR_CHEAT );
 #endif
 
+extern ConVar friendlyfire;
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -257,7 +258,7 @@ void CTFProjectile_EnergyRing::ProjectileTouch( CBaseEntity *pOther )
 	if ( bCombatEntity )
 	{
 		// Bison projectiles shouldn't collide with friendly things
-		if ( ShouldPenetrate() && ( pOther->InSameTeam( this ) || ( gpGlobals->curtime - m_flLastHitTime ) < tf_bison_tick_time.GetFloat() ) )
+		if ( ShouldPenetrate() && ( (pOther->InSameTeam( this ) && !friendlyfire.GetBool()) || ( gpGlobals->curtime - m_flLastHitTime ) < tf_bison_tick_time.GetFloat() ) )
 			return;
 
 		m_flLastHitTime = gpGlobals->curtime;

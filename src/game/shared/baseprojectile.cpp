@@ -210,6 +210,8 @@ bool CBaseProjectile::ShouldTouchNonWorldSolid( CBaseEntity *pOther, const trace
 
 extern float g_flServerCurTime;
 
+extern ConVar friendlyfire;
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -228,7 +230,7 @@ void CBaseProjectile::ResetCollideWithTeammates()
 	// It is worth noting that rollback does not affect position/velocity of the spawned projectile (only hitscan).
 	// There is also a special case for the 0 delay, because we don't need to think in that instance anyway!
 	// ( but it was tested with that too :> )
-	if ( GetCollideWithTeammatesDelay() == 0.0f )
+	if ( GetCollideWithTeammatesDelay() == 0.0f || friendlyfire.GetBool() )
 		m_bCanCollideWithTeammates = true;
 	else
 		SetContextThink( &CBaseProjectile::CollideWithTeammatesThink, g_flServerCurTime + GetCollideWithTeammatesDelay(), "CollideWithTeammates" );

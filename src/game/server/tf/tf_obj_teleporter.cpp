@@ -954,7 +954,7 @@ void CObjectTeleporter::RecieveTeleportingPlayer( CTFPlayer* pTeleportingPlayer 
 				// kill players
 				if ( pEnts[i]->IsPlayer() && ( pEnts[i]->GetTeamNumber() >= FIRST_GAME_TEAM ) )
 				{
-					if ( !pTeleportingPlayer->InSameTeam( pEnts[i] ) && ( pTeleportingPlayer->GetTeamNumber() >= FIRST_GAME_TEAM ) )
+					if ( (!pTeleportingPlayer->InSameTeam( pEnts[i] ) || friendlyfire.GetBool() || tf_avoidteammates.GetBool()) && (pTeleportingPlayer->GetTeamNumber() >= FIRST_GAME_TEAM))
 					{
 						hPlayersToKill.AddToTail( pEnts[i] );
 					}

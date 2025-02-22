@@ -2874,6 +2874,8 @@ CTFFlameEntity *CTFFlameEntity::Create( const Vector &vecOrigin, const QAngle &v
 	return pFlame;
 }
 
+extern ConVar friendlyfire;
+
 //-----------------------------------------------------------------------------
 // Purpose: Think method
 //-----------------------------------------------------------------------------
@@ -2940,7 +2942,7 @@ void CTFFlameEntity::FlameThink( void )
 			}
 
 			// burn them all!
-			if ( pEnt->IsPlayer() && pEnt->InSameTeam( pAttacker ) )
+			if ( pEnt->IsPlayer() && pEnt->InSameTeam( pAttacker ) && !friendlyfire.GetBool() )
 			{
 				OnCollideWithTeammate( ToTFPlayer( pEnt ) );
 			}

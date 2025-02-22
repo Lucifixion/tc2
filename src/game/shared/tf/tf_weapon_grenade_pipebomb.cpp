@@ -639,11 +639,14 @@ bool CTFGrenadePipebombProjectile::DetonateStickies()
 	trace_t tr;
 	for ( int i = 0; i < count; i++ )
 	{
-		if ( pObjects[i]->GetTeamNumber() == GetLauncher()->GetTeamNumber() )
+		if ( pObjects[i]->GetTeamNumber() == GetLauncher()->GetTeamNumber() && !friendlyfire.GetBool() )
 			continue;
 
 		CTFGrenadePipebombProjectile *pGrenade = dynamic_cast < CTFGrenadePipebombProjectile*> ( pObjects[i] );
 		if ( !pGrenade )
+			continue;
+
+		if ( pGrenade->GetLauncher() == GetLauncher() )
 			continue;
 
 		if ( pGrenade->m_iType != TF_GL_MODE_REMOTE_DETONATE )
@@ -756,7 +759,7 @@ void CTFGrenadePipebombProjectile::PipebombTouch( CBaseEntity *pOther )
 	bool bExploded = false;
 
 	// Blow up if we hit an enemy we can damage
-	if ( pOther->GetTeamNumber() && pOther->GetTeamNumber() != GetTeamNumber() && pOther->m_takedamage != DAMAGE_NO )
+	if ( pOther->GetTeamNumber() && (pOther->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) && pOther->m_takedamage != DAMAGE_NO)
 	{
 		// Check to see if this is a respawn room.
 		if ( !pOther->IsPlayer() )
@@ -964,7 +967,7 @@ int CTFGrenadePipebombProjectile::OnTakeDamage( const CTakeDamageInfo &info )
 		return 0;
 	}
 
-	bool bSameTeam = ( info.GetAttacker()->GetTeamNumber() == GetTeamNumber() );
+	bool bSameTeam = ( info.GetAttacker()->GetTeamNumber() == GetTeamNumber() && !friendlyfire.GetBool() );
 	if ( !bSameTeam && CanTakeDamage() )
 	{
 		if ( m_bTouched && HasStickyEffects() && ( info.GetDamageType() & (DMG_BULLET|DMG_BUCKSHOT|DMG_BLAST|DMG_SONIC|DMG_MELEE) ) )

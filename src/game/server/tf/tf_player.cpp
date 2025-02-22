@@ -9037,7 +9037,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		{
 			// Did we land on a guy from the enemy team?
 			CTFPlayer *pOther = ToTFPlayer( GetGroundEntity() );
-			if ( pOther && pOther->GetTeamNumber() != GetTeamNumber() )
+			if ( pOther && (pOther->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				float flStompDamage = 10.0f + info.GetDamage() * 3.f;
 
@@ -9080,7 +9080,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 					m_Shared.ApplyRocketPackStun( ( bHitEnemy ) ? 5.f : flStunTime );
 				}
 				
-				TFGameRules()->PushAllPlayersAway( GetAbsOrigin(), flPushRadius, flPushAmount, GetEnemyTeam( GetTeamNumber() ) );
+				TFGameRules()->PushAllPlayersAway( GetAbsOrigin(), flPushRadius, flPushAmount, friendlyfire.GetBool() ? TEAM_ANY : GetEnemyTeam( GetTeamNumber() ) );
 
 				m_Local.m_flFallVelocity = 0.f;
 
@@ -9793,7 +9793,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	CALL_ATTRIB_HOOK_FLOAT( flRageScale, rage_giving_scale );
 
 	// Give the soldier/pyro some rage points for dealing/taking damage.
-	if ( bTookDamage && pTFAttacker != this )
+	if ( bTookDamage && pTFAttacker != this && pTFAttacker->GetTeamNumber() != GetTeamNumber() )
 	{
 		// Buff flag 1: we get rage when we deal damage. Here, that means the soldier that attacked
 		// gets rage when we take damage.
@@ -10074,6 +10074,9 @@ void CTFPlayer::OnDealtDamage( CBaseCombatCharacter *pVictim, const CTakeDamageI
 			m_damageRateArray[ i ] += flDamage;
 		}
 	}
+
+	if (pVictim->GetTeamNumber() == GetTeamNumber())
+		return;
 
 	// Some item charge meters fill up on damage
 	for( int i= FIRST_LOADOUT_SLOT_WITH_CHARGE_METER; i <= LAST_LOADOUT_SLOT_WITH_CHARGE_METER; ++i )
@@ -11033,6 +11036,9 @@ bool CTFPlayer::ShouldGib( const CTakeDamageInfo &info )
 	if ( info.GetDamageCustom() == TF_DMG_CUSTOM_CROC )
 		return true;
 
+	if ( info.GetDamageCustom() == TF_DMG_CUSTOM_TELEFRAG )
+		return true;
+
 	int iCritOnHardHit = 0;
 	CALL_ATTRIB_HOOK_INT_ON_OTHER( info.GetWeapon(), iCritOnHardHit, crit_on_hard_hit );
 	if ( iCritOnHardHit == 0 )
@@ -11225,20 +11231,23 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		{
 			pWeapon->OnPlayerKill( pTFVictim, info );
 
-			int iCritBoost = 0;
-			CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iCritBoost, add_onkill_critboost_time );
-			if ( iCritBoost )
+			if ( pTFVictim->GetTeamNumber() != GetTeamNumber() )
 			{
-				// Perceptually, people seem to think the effect is shorter than the stated time, so we cheat by adding a tad more for that
-				m_Shared.AddCond( TF_COND_CRITBOOSTED_ON_KILL, iCritBoost+1 );
-			}
+				int iCritBoost = 0;
+				CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iCritBoost, add_onkill_critboost_time );
+				if ( iCritBoost )
+				{
+					// Perceptually, people seem to think the effect is shorter than the stated time, so we cheat by adding a tad more for that
+					m_Shared.AddCond( TF_COND_CRITBOOSTED_ON_KILL, iCritBoost+1 );
+				}
 
-			int iMiniCritBoost = 0;
-			CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iMiniCritBoost, add_onkill_minicritboost_time );
-			if ( iMiniCritBoost )
-			{
-				// Perceptually, people seem to think the effect is shorter than the stated time, so we cheat by adding a tad more for that
-				m_Shared.AddCond( TF_COND_ENERGY_BUFF, iMiniCritBoost + 1 );
+				int iMiniCritBoost = 0;
+				CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iMiniCritBoost, add_onkill_minicritboost_time );
+				if ( iMiniCritBoost )
+				{
+					// Perceptually, people seem to think the effect is shorter than the stated time, so we cheat by adding a tad more for that
+					m_Shared.AddCond( TF_COND_ENERGY_BUFF, iMiniCritBoost + 1 );
+				}
 			}
 		}
 
@@ -11607,6 +11616,9 @@ void CTFPlayer::OnKilledOther_Effects( CBaseEntity *pVictim, const CTakeDamageIn
 			m_Shared.AddToSpyCloakMeter( iCloakOnKill, true );
 		}
 	}
+
+	if ( pVictim->GetTeamNumber() == GetTeamNumber() )
+		return;
 
 	CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase *>( info.GetWeapon() );
 	if ( !pWeapon )
@@ -12136,7 +12148,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 		}
 
 		// Revenge Crits for Diamondback
-		if ( info.GetDamageCustom() == TF_DMG_CUSTOM_BACKSTAB )
+		if ( info.GetDamageCustom() == TF_DMG_CUSTOM_BACKSTAB && pPlayerAttacker->GetTeamNumber() != GetTeamNumber() )
 		{
 			pPlayerAttacker->m_Shared.IncrementRevengeCrits();
 		}
@@ -12394,11 +12406,14 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pPlayerAttacker )
 	{
-		int iDropHealthOnKill = 0;
-		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayerAttacker, iDropHealthOnKill, drop_health_pack_on_kill );
-		if ( iDropHealthOnKill == 1 )
+		if( pPlayerAttacker->GetTeamNumber() != GetTeamNumber() )
 		{
-			DropHealthPack( info, true );
+			int iDropHealthOnKill = 0;
+			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayerAttacker, iDropHealthOnKill, drop_health_pack_on_kill );
+			if ( iDropHealthOnKill == 1 )
+			{
+				DropHealthPack( info, true );
+			}
 		}
 
 		int iKillForcesAttackerToLaugh = 0;
@@ -15838,19 +15853,19 @@ void CTFPlayer::FeignDeath( const CTakeDamageInfo& info, bool bDeathnotice )
 		DropHealthPack( info, true );
 	}
 
-	if ( GetActiveTFWeapon() )
-	{
-		int iDropHealthOnKill = 0;
-		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( GetActiveTFWeapon(), iDropHealthOnKill, drop_health_pack_on_kill );
-		if ( iDropHealthOnKill == 1 )
-		{
-			DropHealthPack( info, true );
-		}
-	}
-
 	CTFPlayer *pTFPlayer = ToTFPlayer( info.GetAttacker() );
 	if ( pTFPlayer )
 	{
+		if( pTFPlayer->GetTeamNumber() != GetTeamNumber() )
+		{
+			int iDropHealthOnKill = 0;
+			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pTFPlayer, iDropHealthOnKill, drop_health_pack_on_kill );
+			if ( iDropHealthOnKill == 1 )
+			{
+				DropHealthPack( info, true );
+			}
+		}
+
 		int iKillForcesAttackerToLaugh = 0;
 		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pTFPlayer, iKillForcesAttackerToLaugh, kill_forces_attacker_to_laugh );
 		if ( iKillForcesAttackerToLaugh == 1 )
@@ -18616,7 +18631,7 @@ void CTFPlayer::DoTauntAttack( void )
 		{
 			CBaseEntity *pEnt = tr.m_pEnt;
 
-			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && pEnt->GetTeamNumber() != GetTeamNumber() )
+			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && (pEnt->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				CTFPlayer *pVictim = ToTFPlayer( pEnt );
 
@@ -18752,7 +18767,7 @@ void CTFPlayer::DoTauntAttack( void )
 		{
 			CBaseEntity *pEnt = tr.m_pEnt;
 
-			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && pEnt->GetTeamNumber() != GetTeamNumber() )
+			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && (pEnt->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				// Launch them up a little
 				AngleVectors( QAngle(-45, m_angEyeAngles[YAW], 0), &vecForward );
@@ -18826,7 +18841,7 @@ void CTFPlayer::DoTauntAttack( void )
 				if ( !pTarget )
 					continue;
 
-				if ( pTarget->GetTeamNumber() == GetTeamNumber() )
+				if ( pTarget->GetTeamNumber() == GetTeamNumber() && !friendlyfire.GetBool() )
 					continue;
 
 				// Do a quick trace and make sure we have LOS.
@@ -18896,7 +18911,7 @@ void CTFPlayer::DoTauntAttack( void )
 		{
 			// Skip players on the same team or who are invuln
 			CTFPlayer *pPlayer = ToTFPlayer( pEntity );
-			if ( !pPlayer || InSameTeam( pPlayer ) || pPlayer->m_Shared.InCond( TF_COND_INVULNERABLE ) )
+			if ( !pPlayer || pPlayer == this || (InSameTeam(pPlayer) && !friendlyfire.GetBool()) || pPlayer->m_Shared.InCond( TF_COND_INVULNERABLE ) )
 				continue;
 
 			// CEntitySphereQuery actually does a box test. So we need to make sure the distance is less than the radius first.
@@ -19026,7 +19041,7 @@ void CTFPlayer::DoTauntAttack( void )
 		{
 			CBaseEntity *pEnt = tr.m_pEnt;
 
-			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && pEnt->GetTeamNumber() != GetTeamNumber() )
+			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && (pEnt->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				CTFPlayer *pVictim = ToTFPlayer( pEnt );
 
@@ -19078,7 +19093,7 @@ void CTFPlayer::DoTauntAttack( void )
 		{
 			CBaseEntity *pEnt = tr.m_pEnt;
 
-			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && pEnt->GetTeamNumber() != GetTeamNumber() )
+			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && (pEnt->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				vecForward = (WorldSpaceCenter() - pEnt->WorldSpaceCenter());
 				VectorNormalize( vecForward );
@@ -19099,7 +19114,7 @@ void CTFPlayer::DoTauntAttack( void )
 		{
 			CBaseEntity *pEnt = tr.m_pEnt;
 
-			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && pEnt->GetTeamNumber() != GetTeamNumber() )
+			if ( pEnt && pEnt->IsPlayer() && pEnt->GetTeamNumber() > LAST_SHARED_TEAM && (pEnt->GetTeamNumber() != GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				vecForward = (WorldSpaceCenter() - pEnt->WorldSpaceCenter());
 				VectorNormalize( vecForward );

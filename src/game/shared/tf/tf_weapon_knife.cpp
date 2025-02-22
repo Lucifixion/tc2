@@ -200,7 +200,7 @@ void CTFKnife::PrimaryAttack( void )
 		{
 			CTFPlayer *pTarget = ToTFPlayer( trace.m_pEnt );
 
-			if ( pTarget && pTarget->GetTeamNumber() != pPlayer->GetTeamNumber() )
+			if ( pTarget && (pTarget->GetTeamNumber() != pPlayer->GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				// Deal extra damage to players when stabbing them from behind
 				if ( CanPerformBackstabAgainstTarget( pTarget ) )
@@ -265,25 +265,29 @@ void CTFKnife::PrimaryAttack( void )
 
 	
 #ifdef GAME_DLL
-	int iSanguisuge = 0;
-	CALL_ATTRIB_HOOK_INT( iSanguisuge, sanguisuge );
-	if ( bSuccessfulBackstab && iSanguisuge > 0 )
+	
+	if ( m_hBackstabVictim.IsValid() && m_hBackstabVictim.Get()->GetTeamNumber() != pPlayer->GetTeamNumber() )
 	{
-		// Our health cap is 3x our default maximum health cap. This is so high to make up for
-		// the fact that our default is lowered by equipping the weapon.
-		int iBaseMaxHealth = ( pPlayer->GetMaxHealth() - pPlayer->GetRuneHealthBonus() ) * 3,
-			iNewHealth	   = MIN( pPlayer->GetHealth() + iBackstabVictimHealth, iBaseMaxHealth ),
-			iDeltaHealth   = iNewHealth - pPlayer->GetHealth();
-
-		if ( TFGameRules() && TFGameRules()->IsPowerupMode() && ( nBackStabVictimRuneType == RUNE_REFLECT ) )
+		int iSanguisuge = 0;
+		CALL_ATTRIB_HOOK_INT( iSanguisuge, sanguisuge );
+		if ( bSuccessfulBackstab && iSanguisuge > 0 )
 		{
-			iDeltaHealth = 0;
-		}
+			// Our health cap is 3x our default maximum health cap. This is so high to make up for
+			// the fact that our default is lowered by equipping the weapon.
+			int iBaseMaxHealth = ( pPlayer->GetMaxHealth() - pPlayer->GetRuneHealthBonus() ) * 3,
+				iNewHealth	   = MIN( pPlayer->GetHealth() + iBackstabVictimHealth, iBaseMaxHealth ),
+				iDeltaHealth   = iNewHealth - pPlayer->GetHealth();
 
-		if ( iDeltaHealth > 0 )
-		{
-			pPlayer->TakeHealth( iDeltaHealth, DMG_IGNORE_MAXHEALTH );
-			pPlayer->m_Shared.HealthKitPickupEffects( iDeltaHealth );
+			if ( TFGameRules() && TFGameRules()->IsPowerupMode() && ( nBackStabVictimRuneType == RUNE_REFLECT ) )
+			{
+				iDeltaHealth = 0;
+			}
+
+			if ( iDeltaHealth > 0 )
+			{
+				pPlayer->TakeHealth( iDeltaHealth, DMG_IGNORE_MAXHEALTH );
+				pPlayer->m_Shared.HealthKitPickupEffects( iDeltaHealth );
+			}
 		}
 	}
 #endif // GAME_DLL
@@ -663,7 +667,7 @@ void CTFKnife::BackstabVMThink( void )
 		{
 			CTFPlayer *pTarget = ToTFPlayer( trace.m_pEnt );
 
-			if ( pTarget && pTarget->GetTeamNumber() != pPlayer->GetTeamNumber() )
+			if ( pTarget && (pTarget->GetTeamNumber() != pPlayer->GetTeamNumber() || friendlyfire.GetBool()) )
 			{
 				if ( CanPerformBackstabAgainstTarget( pTarget ) )
 				{

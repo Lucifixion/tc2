@@ -346,8 +346,13 @@ void CTFSword::OnDecapitation( CTFPlayer *pDeadPlayer )
 		if ( pDeadPlayer )
 		{
 			iDecap += pDeadPlayer->m_Shared.GetDecapitations();
+
+			if ( pDeadPlayer->GetTeamNumber() != pOwner->GetTeamNumber() )
+			{
+				iDecap++;
+			}
 		}
-		pOwner->m_Shared.SetDecapitations( ++iDecap );
+		pOwner->m_Shared.SetDecapitations( iDecap );
 		pOwner->TeamFortress_SetSpeed();
 		if ( pOwner->m_Shared.GetBestOverhealDecayMult() == -1.f )
 		{

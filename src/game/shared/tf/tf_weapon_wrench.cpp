@@ -484,6 +484,8 @@ void CTFRobotArm::PrimaryAttack()
 	BaseClass::PrimaryAttack();
 }
 
+extern ConVar friendlyfire;
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -500,7 +502,7 @@ void CTFRobotArm::Smack( void )
 	trace_t trace;
 	bool btrace = DoSwingTrace( trace );
 	if ( btrace && trace.DidHitNonWorldEntity() && trace.m_pEnt && trace.m_pEnt->IsPlayer() &&
-		 trace.m_pEnt->GetTeamNumber() != pPlayer->GetTeamNumber() )
+		 (trace.m_pEnt->GetTeamNumber() != pPlayer->GetTeamNumber() || friendlyfire.GetBool()) )
 	{
 		m_iComboCount++;
 		m_flLastComboHit = gpGlobals->curtime;

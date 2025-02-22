@@ -13,6 +13,8 @@
 #include "tf_weaponbase_rocket.h"
 #include "iscorer.h"
 
+extern ConVar friendlyfire;
+
 class CTFProjectile_Arrow : public CTFBaseRocket, public IScorer
 {
 public:
@@ -155,7 +157,7 @@ public:
 
 	virtual float GetDamage() OVERRIDE { return 1.f; }
 	virtual bool CanHeadshot() OVERRIDE { return false; }
-	virtual bool CanCollideWithTeammates() const OVERRIDE { return false; }
+	virtual bool CanCollideWithTeammates() const OVERRIDE { return friendlyfire.GetBool(); }
 
 	void HookTarget( CBaseEntity *pOther );
 	void HookLatchedThink();

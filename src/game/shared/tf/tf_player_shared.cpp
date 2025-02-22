@@ -207,6 +207,8 @@ extern ConVar weapon_medigun_chargerelease_rate;
 extern ConVar mp_developer;
 #endif // _DEBUG || STAGING_ONLY
 
+extern ConVar friendlyfire;
+
 //ConVar tf_spy_stealth_blink_time( "tf_spy_stealth_blink_time", "0.3", FCVAR_DEVELOPMENTONLY, "time after being hit the spy blinks into view" );
 //ConVar tf_spy_stealth_blink_scale( "tf_spy_stealth_blink_scale", "0.85", FCVAR_DEVELOPMENTONLY, "percentage visible scalar after being hit the spy blinks into view" );
 #define TF_SPY_STEALTH_BLINKTIME   0.3f
@@ -10149,7 +10151,7 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 				Vector(  penetrationHullExtension,  penetrationHullExtension,  penetrationHullExtension ) );
 
 			// Penetrating shot: Strikes everything along the bullet's path.
-			CBulletPenetrateEnum bulletpenetrate( vecStart, vecEnd, this, ePenetrateType, ePenetrateType == TF_DMG_CUSTOM_PENETRATE_MY_TEAM );
+			CBulletPenetrateEnum bulletpenetrate( vecStart, vecEnd, this, ePenetrateType, ePenetrateType == TF_DMG_CUSTOM_PENETRATE_MY_TEAM && !friendlyfire.GetBool() ); 
 			enginetrace->EnumerateEntities( ray, false, &bulletpenetrate );
 			
 			FOR_EACH_VEC( bulletpenetrate.m_Targets, i )
@@ -10211,12 +10213,12 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 			if ( ePenetrateType == TF_DMG_CUSTOM_PENETRATE_MY_TEAM )
 			{
 				// Skip friendlies if we're looking for the first enemy
-				if ( GetTeamNumber() == pTarget->GetTeamNumber() )
+				if ( GetTeamNumber() == pTarget->GetTeamNumber() && !friendlyfire.GetBool() )
 					continue;
 				
 				pTraceToUse = &trace;
 			}
-			else if ( ePenetrateType == TF_DMG_CUSTOM_PENETRATE_NONBURNING_TEAMMATE )
+			else if ( ePenetrateType == TF_DMG_CUSTOM_PENETRATE_NONBURNING_TEAMMATE ) // Sydney Sleepers have unique player interactions.
 			{
 				if ( GetTeamNumber() == pTarget->GetTeamNumber() )
 				{

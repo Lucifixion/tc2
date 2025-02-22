@@ -313,7 +313,7 @@ void CTFProjectile_EnergyBall::Explode( trace_t *pTrace, CBaseEntity *pOther )
 			// Rocket Specialist
 			CheckForStunOnImpact( pTarget );
 
-			if ( pTarget->GetTeamNumber() != pAttacker->GetTeamNumber() )
+			if ( pTarget->GetTeamNumber() != pAttacker->GetTeamNumber() || friendlyfire.GetBool() )
 			{
 				RecordEnemyPlayerHit( pTarget, true );
 			}
