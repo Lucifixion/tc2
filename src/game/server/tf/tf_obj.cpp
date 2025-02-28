@@ -174,7 +174,7 @@ IMPLEMENT_SERVERCLASS_ST(CBaseObject, DT_BaseObject)
 	SendPropVector( SENDINFO( m_vecBuildMins ), -1, SPROP_COORD ),
 	SendPropInt( SENDINFO( m_iDesiredBuildRotations ), 2, SPROP_UNSIGNED ),
 	SendPropBool( SENDINFO( m_bServerOverridePlacement ) ),
-	SendPropInt( SENDINFO(m_iUpgradeLevel), 3 ),
+	SendPropInt( SENDINFO(m_iUpgradeLevel), 5 ),
 	SendPropInt( SENDINFO(m_iUpgradeMetal), 10 ),
 	SendPropInt( SENDINFO(m_iUpgradeMetalRequired), 10 ),
 	SendPropInt( SENDINFO(m_iHighestUpgradeLevel), 3 ),
@@ -1604,7 +1604,7 @@ void CBaseObject::SetHealth( float flHealth )
 	bool changed = m_flHealth != flHealth;
 
 	m_flHealth = flHealth;
-	m_iHealth = ceil(m_flHealth);
+	m_iHealth = Ceil2Int(m_flHealth);
 
 
 	/*
@@ -1974,6 +1974,9 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 		break;
 	}
 
+	// Round up damage like players
+	flDamage = Ceil2Int( flDamage );
+
 	// Don't look, Tom Bui!
 	static struct
 	{
@@ -2010,7 +2013,7 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 
 	if ( flDamage )
 	{
-		m_iLifetimeDamage += floor( Min( flDamage, m_flHealth ) );
+		m_iLifetimeDamage += Floor2Int( MIN( flDamage, m_flHealth ) );
 		if ( m_iLifetimeDamage > tf_obj_damage_tank_achievement_amount.GetInt() && GetBuilder() )
 		{
 			GetBuilder()->AwardAchievement( ACHIEVEMENT_TF_ENGINEER_TANK_DAMAGE );
@@ -2856,6 +2859,10 @@ bool CBaseObject::CheckUpgradeOnHit( CTFPlayer *pPlayer )
 	{
 		int iPlayerMetal = pPlayer->GetAmmoCount( TF_AMMO_METAL );
 		int nMaxToAdd = GetUpgradeAmountPerHit();
+		if (nMaxToAdd < 1)
+		{
+			return false;
+		}
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( pPlayer, nMaxToAdd, upgrade_rate_mod );
 		int iAmountToAdd = Min( nMaxToAdd, iPlayerMetal );
 
@@ -2947,7 +2954,7 @@ int CBaseObject::Command_Repair( CTFPlayer *pActivator, float flAmount, float fl
 	
 	float flRepairAmountMax = flAmount * flRepairMod;
 	int iRepairAmount = Min( RoundFloatToInt( flRepairAmountMax ), GetMaxHealth() - RoundFloatToInt( GetHealth() ) );
-	int iRepairCost = ceil( (float)( iRepairAmount ) / flRepairToMetalRatio );
+	int iRepairCost = Ceil2Int( (float)( iRepairAmount ) / flRepairToMetalRatio );
 	if ( iRepairCost > pActivator->GetBuildResources() )
 	{
 		// What can we afford?
@@ -3028,8 +3035,11 @@ void CBaseObject::StartUpgrading( void )
 	if ( !m_bCarryDeploy && !IsUsingReverseBuild() )
 	{
 		int iMaxHealth = GetMaxHealthForCurrentLevel();
-		SetMaxHealth( iMaxHealth );
-		SetHealth( iMaxHealth );
+		if (GetMaxHealth() != iMaxHealth)
+		{
+			SetMaxHealth(iMaxHealth);
+			SetHealth(iMaxHealth);
+		}
 	}
 
 	const char *pUpgradeSound = GetObjectInfo( ObjectType() )->m_pUpgradeSound;
@@ -3816,7 +3826,7 @@ int CBaseObject::GetMaxHealthForCurrentLevel( void )
 	
 	if ( !IsMiniBuilding() && ( GetUpgradeLevel() > 1 ) )
 	{
-		float flMultiplier = pow( UPGRADE_LEVEL_HEALTH_MULTIPLIER, GetUpgradeLevel() - 1 );
+		float flMultiplier = pow( UPGRADE_LEVEL_HEALTH_MULTIPLIER, MIN(GetUpgradeLevel(), OBJ_MAX_UPGRADE_LEVEL) - 1 );
 		iMaxHealth = (int)( iMaxHealth * flMultiplier );
 	}
 

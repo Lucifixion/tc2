@@ -2647,6 +2647,11 @@ bool CBasePlayer::SetObserverTarget(CBaseEntity *target)
 
 	// reset fov to default
 	SetFOV( this, 0 );	
+	// reset roll
+	QAngle angles = pl.v_angle;
+	angles.z = 0;
+	SetLocalAngles( angles );
+	SnapEyeAngles( angles );
 	
 	if ( m_iObserverMode == OBS_MODE_ROAMING )
 	{
@@ -6740,6 +6745,11 @@ bool CBasePlayer::ClientCommand( const CCommand &args )
 		}
 		return true;
 	}
+	else if ( stricmp(cmd, "demostop") == 0 )
+	{
+		// fake command server operator can use to detect demo recording stops
+		return true;
+	}
 
 	return false;
 }
@@ -8101,14 +8111,14 @@ void CMovementSpeedMod::InputSpeedMod(inputdata_t &data)
 	}
 }
 
-
-void SendProxy_CropFlagsToPlayerFlagBitsLength( const SendProp *pProp, const void *pStruct, const void *pVarData, DVariant *pOut, int iElement, int objectID)
+void SendProxy_CropFlagsToPlayerFlagBitsLength( const SendProp* pProp, const void* pStruct, const void* pVarData, DVariant* pOut, int iElement, int objectID )
 {
-	int mask = (1<<PLAYER_FLAG_BITS) - 1;
-	int data = *(int *)pVarData;
+	int mask = ( 1 << PLAYER_FLAG_BITS ) - 1;
+	int data = *( int* )pVarData;
 
 	pOut->m_Int = ( data & mask );
 }
+
 // -------------------------------------------------------------------------------- //
 // SendTable for CPlayerState.
 // -------------------------------------------------------------------------------- //

@@ -111,7 +111,7 @@ void EndGroupingSounds() {}
 // 10, Square
 Vector g_vecFixedWpnSpreadPellets[] = 
 {
-	Vector( 0,0,0 ),	// First pellet goes down the middle
+	Vector( 0,0,0 ),	// First and last pellet goes down the middle to reward fine aim
 	Vector( 1,0,0 ),	
 	Vector( -1,0,0 ),	
 	Vector( 0,-1,0 ),	
@@ -120,7 +120,6 @@ Vector g_vecFixedWpnSpreadPellets[] =
 	Vector( 0.85,0.85,0 ),	
 	Vector( -0.85,-0.85,0 ),	
 	Vector( -0.85,0.85,0 ),	
-	Vector( 0,0,0 ),	// last pellet goes down the middle as well to reward fine aim
 };
 
 // 15, Rectangle - slight noise applied below (+/- 0.07)
@@ -298,6 +297,7 @@ void FX_FireBullets( CTFWeaponBase *pWpn, int iPlayer, const Vector &vecOrigin, 
 	}
 #endif // !CLIENT
 
+	const float flTimeBetweenShots = pWeaponInfo->GetWeaponData(iMode).m_flTimeFireDelay;
 	int nBulletsPerShot = pWeaponInfo->GetWeaponData( iMode ).m_nBulletsPerShot;
 	bool bFixedSpread = ( nDamageType & DMG_BUCKSHOT ) && ( nBulletsPerShot > 1 ) && IsFixedWeaponSpreadEnabled( pWpn );
 	if ( pWeapon )
@@ -345,14 +345,42 @@ void FX_FireBullets( CTFWeaponBase *pWpn, int iPlayer, const Vector &vecOrigin, 
 			{
 				bool bAccuracyBonus = false;
 				float flTimeSinceLastShot = ( gpGlobals->curtime - pWpn->m_flLastFireTime );
+				const float flMinAccuracyCooldown = 0.25f;
+				const float flMaxAccuracyCooldown = nBulletsPerShot == 1 ? 1.25f : flMinAccuracyCooldown;
 
-				if ( nBulletsPerShot > 1 && flTimeSinceLastShot > 0.25f )
+				if ( nBulletsPerShot > 1 && flTimeSinceLastShot > flMinAccuracyCooldown )
 				{
 					bAccuracyBonus = true;
 				}
-				else if ( nBulletsPerShot == 1 && flTimeSinceLastShot > 1.25f )
+				else if ( nBulletsPerShot == 1 )
 				{
-					bAccuracyBonus = true;
+#ifdef MCOMS_BALANCE_PACK
+					if ( pWpn->GetWeaponID() == TF_WEAPON_REVOLVER )
+					{
+						// Ambassador is always accurate.
+						int iMode = 0;
+						CALL_ATTRIB_HOOK_INT_ON_OTHER( pWpn, iMode, set_weapon_mode);
+						if (iMode == 1)
+						{
+							bAccuracyBonus = true;
+						}
+					}
+					if ( !bAccuracyBonus )
+#endif
+					{
+#ifdef MCOMS_BALANCE_PACK
+						// Give players control over accuracy vs. speed on their revolvers / pistols
+						const float flShotTimeCooldown = 1.0f / 0.6f;
+						const float flAccuracyCooldown = Clamp(flTimeBetweenShots * flShotTimeCooldown, flMinAccuracyCooldown, flMaxAccuracyCooldown);
+#else
+						const float flAccuracyCooldown = flMaxAccuracyCooldown;
+#endif
+						if (flTimeSinceLastShot > flAccuracyCooldown)
+						{
+							bAccuracyBonus = true;
+						}
+						
+					}
 				}
 
 				if ( bAccuracyBonus )

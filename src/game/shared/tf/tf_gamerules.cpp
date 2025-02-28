@@ -875,6 +875,7 @@ ConVar tf_raid_allow_overtime( "tf_raid_allow_overtime", "0"/*, FCVAR_CHEAT*/ );
 
 ConVar tf_mvm_defenders_team_size( "tf_mvm_defenders_team_size", "6", FCVAR_REPLICATED | FCVAR_NOTIFY, "Maximum number of defenders in MvM" );
 ConVar tf_mvm_max_connected_players( "tf_mvm_max_connected_players", "10", FCVAR_GAMEDLL, "Maximum number of connected real players in MvM" );
+ConVar tf_mvm_max_invaders( "tf_mvm_max_invaders", "22", FCVAR_GAMEDLL, "Maximum number of invaders in MvM" );
 
 ConVar tf_mvm_min_players_to_start( "tf_mvm_min_players_to_start", "3", FCVAR_REPLICATED | FCVAR_NOTIFY, "Minimum number of players connected to start a countdown timer" );
 ConVar tf_mvm_respec_enabled( "tf_mvm_respec_enabled", "1", FCVAR_CHEAT | FCVAR_REPLICATED, "Allow players to refund credits spent on player and item upgrades." );
@@ -5720,14 +5721,19 @@ int CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 	CBaseEntity *pInflictor = dmgInfo->GetInflictor();
 
 	// Check that the explosion can 'see' this entity.
-	Vector vecSpot = pEntity->BodyTarget( vecSrc, false );
+	std::vector<Vector> vecSpots{ pEntity->EyePosition() };
+	static const float flInnerRadiusPct = 0.05f;
 	CTraceFilterIgnorePlayers filterPlayers( pInflictor, COLLISION_GROUP_PROJECTILE );
 	CTraceFilterIgnoreProjectiles filterProjectiles( pInflictor, COLLISION_GROUP_PROJECTILE );
 	CTraceFilterIgnoreFriendlyCombatItems filterCombatItems( pInflictor, COLLISION_GROUP_PROJECTILE, pInflictor->GetTeamNumber() );
 	CTraceFilterChain filterPlayersAndProjectiles( &filterPlayers, &filterProjectiles );
 	CTraceFilterChain filter( &filterPlayersAndProjectiles, &filterCombatItems );
+	Vector vecOffset;
+	int totalChecks = 1;
+	int passedChecks = 0;
+	Vector vecMainSpot = pEntity->BodyTarget(vecSrc, false);
+	UTIL_TraceLine(vecSrc, vecMainSpot, MASK_RADIUS_DAMAGE, &filter, &tr);
 
-	UTIL_TraceLine( vecSrc, vecSpot, MASK_RADIUS_DAMAGE, &filter, &tr );
 	if ( tr.startsolid && tr.m_pEnt )
 	{
 		// Return when inside an enemy combat shield and tracing against a player of that team ("absorbed")
@@ -5736,14 +5742,48 @@ int CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 
 		filterPlayers.SetPassEntity( tr.m_pEnt );
 		CTraceFilterChain filterSelf( &filterPlayers, &filterCombatItems );
-		UTIL_TraceLine( vecSrc, vecSpot, MASK_RADIUS_DAMAGE, &filterSelf, &tr );
+		UTIL_TraceLine( vecSrc, vecMainSpot, MASK_RADIUS_DAMAGE, &filterSelf, &tr );
 	}
 
-	// If we don't trace the whole way to the target, and we didn't hit the target entity, we're blocked
+	// If we don't trace the whole way to the target, and we didn't hit the target entity, we're blocked, so do a more robust check
 	if ( tr.fraction != 1.f && tr.m_pEnt != pEntity )
 	{
-		// Don't let projectiles block damage
-		return 0;
+		for (int x = -1; x <= 1; x += 2)
+		{
+			vecOffset.x = x * flInnerRadiusPct;
+			for (int y = -1; y <= 1; y += 2)
+			{
+				vecOffset.y = y * flInnerRadiusPct;
+				for (int z = -1; z <= 1; z += 2)
+				{
+					vecOffset.z = z * flInnerRadiusPct;
+					for (auto& vecSpot : vecSpots)
+					{
+						UTIL_TraceLine(vecSrc + vecOffset, vecSpot, MASK_RADIUS_DAMAGE, &filter, &tr);
+						if (tr.startsolid && tr.m_pEnt)
+						{
+							// Return when inside an enemy combat shield and tracing against a player of that team ("absorbed")
+							if (tr.m_pEnt->IsCombatItem() && pEntity->InSameTeam(tr.m_pEnt) && (pEntity != tr.m_pEnt))
+								return 0;
+
+							filterPlayers.SetPassEntity(tr.m_pEnt);
+							CTraceFilterChain filterSelf(&filterPlayers, &filterCombatItems);
+							UTIL_TraceLine(vecSrc + vecOffset, vecSpot, MASK_RADIUS_DAMAGE, &filterSelf, &tr);
+						}
+
+						totalChecks++;
+						// If we don't trace the whole way to the target, and we didn't hit the target entity, we're blocked
+						if (tr.fraction != 1.0 && tr.m_pEnt != pEntity)
+							return 0;
+						passedChecks++;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		passedChecks++;
 	}
 
 	// Adjust the damage - apply falloff.
@@ -5787,6 +5827,9 @@ int CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 		}
 	}
 
+	// As a compromise, reduce the damage if we only did it on a robust check
+	flAdjustedDamage *= passedChecks / (float)totalChecks;
+
 	// If we end up doing 0 damage, exit now.
 	if ( flAdjustedDamage <= 0.f )
 		return 0;
@@ -5802,7 +5845,7 @@ int CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 	CTakeDamageInfo adjustedInfo = *dmgInfo;
 	adjustedInfo.SetDamage( flAdjustedDamage );
 
-	Vector dir = vecSpot - vecSrc;
+	Vector dir = vecMainSpot - vecSrc;
 	VectorNormalize( dir );
 
 	// If we don't have a damage force, manufacture one
@@ -6108,7 +6151,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 					eDamageBonusCond = TF_COND_OFFENSEBUFF;
 				}
 			}
-			else if ( pTFAttacker && (bitsDamage & DMG_RADIUS_MAX) && pWeapon && ( (pWeapon->GetWeaponID() == TF_WEAPON_SWORD) || (pWeapon->GetWeaponID() == TF_WEAPON_BOTTLE)|| (pWeapon->GetWeaponID() == TF_WEAPON_WRENCH) ) )
+			else if ( pTFAttacker && (bitsDamage & DMG_RADIUS_MAX) && pWeapon && ( (pWeapon->GetWeaponID() == TF_WEAPON_SWORD) || (pWeapon->GetWeaponID() == TF_WEAPON_BOTTLE)|| (pWeapon->GetWeaponID() == TF_WEAPON_WRENCH) || (pWeapon->GetWeaponID() == TF_WEAPON_STICKBOMB) || (pWeapon->GetWeaponID() == TF_WEAPON_SHOVEL) ) )
 			{
 				// First sword or bottle attack after a charge is a mini-crit.
 				bAllSeeCrit = true;
@@ -6489,12 +6532,19 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 		int iForceCritDmgFalloff = 0;
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iForceCritDmgFalloff, crit_dmg_falloff );
 
-		#ifdef MCOMS_BALANCE_PACK
+#ifdef MCOMS_BALANCE_PACK
+		// SMG headshots falloff
 		if ( pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_SMG )
 		{
 			iForceCritDmgFalloff = 1;
 		}
-		#endif
+
+		// All revolver headshots falloff
+		if (pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_REVOLVER)
+		{
+			iForceCritDmgFalloff = 1;
+		}
+#endif
 
 		// Minicrits still get short range damage bonus
 		bool bForceCritFalloff = ( bitsDamage & DMG_USEDISTANCEMOD ) && 
@@ -6593,7 +6643,6 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 			case TF_WEAPON_PIPEBOMBLAUNCHER :	// Stickies
 			case TF_WEAPON_GRENADELAUNCHER :
 			case TF_WEAPON_CANNON :
-			case TF_WEAPON_STICKBOMB:
 				if ( !( bitsDamage & DMG_NOCLOSEDISTANCEMOD ) )
 				{
 					flRandomDamage *= 0.2f;
@@ -6765,12 +6814,14 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 			flDamage *= flDmgMult;
 		}
 
+		#ifdef MCOMS_BALANCE_PACK
 		float fBaseDamage = flDamage;
+		#endif
 
 		flDamage += flCritDamage;
 
 		#ifdef MCOMS_BALANCE_PACK
-		if (flCritDamage > 0 && WeaponID_IsSniperRifle(pWeapon->GetWeaponID()) && IsHeadshot(info.GetDamageCustom()))
+		if (flCritDamage > 0 && pWeapon && WeaponID_IsSniperRifle(pWeapon->GetWeaponID()) && IsHeadshot(info.GetDamageCustom()))
 		{
 			// Check for headshot damage modifiers
 			float flHeadshotModifier = 1.0f;
@@ -15575,6 +15626,7 @@ void CTFGameRules::PlayHelltowerAnnouncerVO( int iRedLine, int iBlueLine )
 	}	
 	
 	CSoundParameters params;
+	// This could have a 2 sec cooldown, but the lines are pretty unique and triggered on certain events so it's not necessary really.
 	float flSoundDuration = 0;
 
 	if ( gpGlobals->curtime > flRedAnnouncerTalkingUntil || bForceVO )

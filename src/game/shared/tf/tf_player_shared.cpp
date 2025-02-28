@@ -110,7 +110,13 @@ ConVar tf_halloween_kart_boost_duration( "tf_halloween_kart_boost_duration", "1.
 
 ConVar tf_scout_air_dash_count( "tf_scout_air_dash_count", "1", FCVAR_REPLICATED | FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 
-ConVar tf_spy_invis_time( "tf_spy_invis_time", "1.0", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "Transition time in and out of spy invisibility", true, 0.1, true, 5.0 );
+#ifdef MCOMS_BALANCE_PACK
+#define DEFAULT_SPY_INVIS_TIME "0.7"
+#else
+#define DEFAULT_SPY_INVIS_TIME "1.0"
+#endif
+
+ConVar tf_spy_invis_time( "tf_spy_invis_time", DEFAULT_SPY_INVIS_TIME, FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "Transition time in and out of spy invisibility", true, 0.1, true, 5.0 );
 ConVar tf_spy_invis_unstealth_time( "tf_spy_invis_unstealth_time", "2.0", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "Transition time in and out of spy invisibility", true, 0.1, true, 5.0 );
 
 ConVar tf_spy_max_cloaked_speed( "tf_spy_max_cloaked_speed", "999", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED );	// no cap
@@ -163,7 +169,16 @@ ConVar tf_allow_sliding_taunt( "tf_allow_sliding_taunt", "0", FCVAR_NONE, "1 - A
 ConVar tf_useparticletracers( "tf_useparticletracers", "1", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "Use particle tracers instead of old style ones." );
 ConVar tf_spy_cloak_consume_rate( "tf_spy_cloak_consume_rate", "10.0", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "cloak to use per second while cloaked, from 100 max )" );	// 10 seconds of invis
 ConVar tf_spy_cloak_regen_rate( "tf_spy_cloak_regen_rate", "3.3", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "cloak to regen per second, up to 100 max" );		// 30 seconds to full charge
-ConVar tf_spy_cloak_no_attack_time( "tf_spy_cloak_no_attack_time", "2.0", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "time after uncloaking that the spy is prohibited from attacking" );
+
+#ifdef MCOMS_BALANCE_PACK
+#define DEFAULT_SPY_CLOAK_NO_ATTACK_TIME "1.4"
+#else
+#define DEFAULT_SPY_CLOAK_NO_ATTACK_TIME "2.0"
+#endif
+
+ConVar tf_spy_cloak_no_attack_time( "tf_spy_cloak_no_attack_time", DEFAULT_SPY_CLOAK_NO_ATTACK_TIME, FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "time after uncloaking that the spy is prohibited from attacking" );
+
+
 ConVar tf_tournament_hide_domination_icons( "tf_tournament_hide_domination_icons", "0", FCVAR_REPLICATED, "Tournament mode server convar that forces clients to not display the domination icons above players dominating them." );
 ConVar tf_damage_disablespread( "tf_damage_disablespread", "1", FCVAR_REPLICATED | FCVAR_NOTIFY, "Toggles the random damage spread applied to all player damage." );
 
@@ -474,6 +489,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_bIsTargetedForPasstimePass, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ), // does this belong here?
 	DEFINE_PRED_FIELD( m_askForBallTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_ARRAY( m_flItemChargeMeter, FIELD_FLOAT, LAST_LOADOUT_SLOT_WITH_CHARGE_METER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_FIELD( m_bScattergunJump, FIELD_BOOLEAN ),
 END_PREDICTION_DATA()
 
 // Server specific.
@@ -714,7 +730,7 @@ bool CTFPlayer::IsAllowedToTaunt( void )
 	}
 
 	// can't taunt while carrying an object
-	if ( m_Shared.IsCarryingObject() )
+	if ( m_Shared.IsCarryingObject() && !m_Shared.GetCarriedObject()->ShouldBeActiveWhileCarried() )
 		return false;
 
 	// Can't taunt if hooked into a player
@@ -785,6 +801,8 @@ CTFPlayerShared::CTFPlayerShared()
 	m_flInvisibility = 0.0f;
 	m_flPrevInvisibility = 0.f;
 	m_flTmpDamageBonusAmount = 1.0f;
+
+	m_bScattergunJump = false;
 
 	m_bFeignDeathReady = false;
 
@@ -2734,6 +2752,8 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		if ( m_pOuter->IsAllowedToRemoveTaunt() && gpGlobals->curtime > m_pOuter->GetTauntRemoveTime() )
 		{
 			RemoveCond( TF_COND_TAUNTING );
+			// Make sure we clear out this flag
+			m_pOuter->m_bAllowMoveDuringTaunt = false;
 		}
 	}
 	if ( InCond( TF_COND_BURNING ) && !m_pOuter->m_bInPowerPlay )
@@ -3092,9 +3112,16 @@ void CTFPlayerShared::ConditionThink( void )
 
 	VehicleThink();
 
-	if ( m_pOuter->GetFlags() & FL_ONGROUND && InCond( TF_COND_PARACHUTE_ACTIVE ) )
+	if ( m_pOuter->GetFlags() & FL_ONGROUND )
 	{
-		RemoveCond( TF_COND_PARACHUTE_ACTIVE );
+		if ( InCond( TF_COND_PARACHUTE_ACTIVE ) )
+		{
+			RemoveCond( TF_COND_PARACHUTE_ACTIVE );
+		}
+		if ( InCond( TF_COND_PARACHUTE_DEPLOYED ) )
+		{
+			RemoveCond( TF_COND_PARACHUTE_DEPLOYED );
+		}
 	}
 
 	// See if we should be pulsing our radius heal
@@ -3961,6 +3988,16 @@ void CTFPlayerShared::OnAddTaunting( void )
 	m_pOuter->PlayWearableAnimsForPlaybackEvent( WAP_START_TAUNTING );
 #else
 	FireClientTauntParticleEffects();
+	if (m_pOuter->IsLocalPlayer())
+	{
+		static ConVarRef cl_first_person_uses_world_model("cl_first_person_uses_world_model");
+		m_pOuter->m_bHasFirstPersonWorldModel = cl_first_person_uses_world_model.GetBool();
+		if (!m_pOuter->m_bHasFirstPersonWorldModel)
+		{
+			cl_first_person_uses_world_model.SetValue(true);
+		}
+		m_pOuter->FlushAllPlayerVisibilityState();
+	}
 #endif
 }
 
@@ -4038,6 +4075,16 @@ void CTFPlayerShared::OnRemoveTaunting( void )
 	}
 
 	m_flTauntParticleRefireTime = 0.0f;
+
+	if (m_pOuter->IsLocalPlayer())
+	{
+		if (!m_pOuter->m_bHasFirstPersonWorldModel)
+		{
+			static ConVarRef cl_first_person_uses_world_model("cl_first_person_uses_world_model");
+			cl_first_person_uses_world_model.SetValue(false);
+		}
+		m_pOuter->FlushAllPlayerVisibilityState();
+	}
 #endif
 
 	m_pOuter->m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_VCD );
@@ -5632,7 +5679,10 @@ void CTFPlayerShared::OnAddHalloweenKartCage( void )
 	if ( !m_pOuter->m_hHalloweenKartCage )
 	{
 		m_pOuter->m_hHalloweenKartCage = C_PlayerAttachedModel::Create( "models/props_halloween/bumpercar_cage.mdl", m_pOuter, 0, vec3_origin, PAM_PERMANENT, 0 );
-		m_pOuter->m_hHalloweenKartCage->FollowEntity( m_pOuter, true );
+		if ( m_pOuter->m_hHalloweenKartCage )
+		{
+			m_pOuter->m_hHalloweenKartCage->FollowEntity( m_pOuter, true );
+		}
 	}
 #else
 	AddCond( TF_COND_FREEZE_INPUT );
@@ -10454,8 +10504,8 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 }
 
 #ifdef CLIENT_DLL
-static ConVar tf_impactwatertimeenable( "tf_impactwatertimeenable", "0", FCVAR_CHEAT, "Draw impact debris effects." );
-static ConVar tf_impactwatertime( "tf_impactwatertime", "1.0f", FCVAR_CHEAT, "Draw impact debris effects." );
+static ConVar tf_impactwatertimeenable( "tf_impactwatertimeenable", "1", 0, "Rate limit bullet impact effects on water." );
+static ConVar tf_impactwatertime( "tf_impactwatertime", "0.2f", 0, "The interval between bullet impact effects on water." );
 #endif
 
 //-----------------------------------------------------------------------------
@@ -12066,7 +12116,32 @@ bool CTFPlayer::CanAttack( int iCanAttackFlags )
 		return true;
 	}
 
-	if ( ( m_Shared.GetStealthNoAttackExpireTime() > gpGlobals->curtime && !m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) ) || m_Shared.InCond( TF_COND_STEALTHED ) )
+	bool bCanAttackWhileCloaked = false;
+#ifdef MCOMS_BALANCE_PACK
+	// L'Etranger can always attack while cloaked
+	int iAddCloakOnHit = 0;
+	CALL_ATTRIB_HOOK_INT_ON_OTHER(GetActiveWeapon(), iAddCloakOnHit, add_cloak_on_hit);
+	if (iAddCloakOnHit != 0)
+	{
+		bCanAttackWhileCloaked = true;
+	}
+#endif
+
+	const bool bCanAttackWhenDecloaking = tf_spy_invis_unstealth_time.GetFloat() > tf_spy_cloak_no_attack_time.GetFloat();
+	const bool bIsCloaked = m_Shared.InCond(TF_COND_STEALTHED_USER_BUFF);
+	float flCurTime = gpGlobals->curtime;
+#ifdef MCOMS_BALANCE_PACK
+	// Can use the knife earlier in decloak than gun and sapper
+	// TODO: maybe let sapper do this too?
+	if (GetActiveTFWeapon() && GetActiveTFWeapon()->GetWeaponID() == TF_WEAPON_KNIFE)
+	{
+		flCurTime += 0.5f;
+	}
+#endif
+	const bool bCanAttackStealthTime = m_Shared.GetStealthNoAttackExpireTime() <= flCurTime;
+	const bool bCanAttackForCloak = bCanAttackWhenDecloaking ? (bCanAttackStealthTime) : bCanAttackStealthTime && !bIsCloaked;
+
+	if ( !bCanAttackWhileCloaked && (!bCanAttackForCloak || m_Shared.InCond(TF_COND_STEALTHED)))
 	{
 		if ( !( iCanAttackFlags & TF_CAN_ATTACK_FLAG_GRAPPLINGHOOK ) )
 		{
@@ -12077,7 +12152,7 @@ bool CTFPlayer::CanAttack( int iCanAttackFlags )
 		}
 	}
 
-	if ( m_Shared.IsFeignDeathReady() )
+	if ( !bCanAttackWhileCloaked && m_Shared.IsFeignDeathReady() )
 	{
 #ifdef CLIENT_DLL
 		HintMessage( HINT_CANNOT_ATTACK_WHILE_FEIGN_ARMED, true, true );
@@ -12121,6 +12196,13 @@ bool CTFPlayer::CanJump() const
 	// Cannot jump while taunting
 	if ( m_Shared.InCond( TF_COND_TAUNTING ) )
 		return false;
+
+	CTFWeaponBase *pActiveWeapon = m_Shared.GetActiveTFWeapon();
+	if ( pActiveWeapon )
+	{
+		if ( !pActiveWeapon->OwnerCanJump() )
+			return false;
+	}
 
 	int iNoJump = 0;
 	CALL_ATTRIB_HOOK_INT( iNoJump, no_jump );
@@ -12481,14 +12563,17 @@ bool CTFPlayer::TryToPickupBuilding()
 
 		pPickupObject->MakeCarriedObject( this );
 
-		CTFWeaponBuilder *pBuilder = dynamic_cast<CTFWeaponBuilder*>(Weapon_OwnsThisID( TF_WEAPON_BUILDER ));
-		if ( pBuilder )
+		if (!pPickupObject->ShouldBeActiveWhileCarried())
 		{
-			if ( GetActiveTFWeapon() == pBuilder )
-				SetActiveWeapon( NULL );
+			CTFWeaponBuilder* pBuilder = dynamic_cast<CTFWeaponBuilder*>(Weapon_OwnsThisID(TF_WEAPON_BUILDER));
+			if (pBuilder)
+			{
+				if (GetActiveTFWeapon() == pBuilder)
+					SetActiveWeapon(NULL);
 
-			Weapon_Switch( pBuilder );
-			pBuilder->m_flNextSecondaryAttack = gpGlobals->curtime + 0.5f;
+				Weapon_Switch(pBuilder);
+				pBuilder->m_flNextSecondaryAttack = gpGlobals->curtime + 0.5f;
+			}
 		}
 
 		SpeakConceptIfAllowed( MP_CONCEPT_PICKUP_BUILDING, pPickupObject->GetResponseRulesModifier() );
@@ -12632,7 +12717,7 @@ bool CTFPlayer::Weapon_CanSwitchTo( CBaseCombatWeapon *pWeapon )
 				return false;
 		}
 
-		if ( m_Shared.IsCarryingObject() && (GetPlayerClass()->GetClassIndex() == TF_CLASS_ENGINEER) )
+		if ( m_Shared.IsCarryingObject() && (GetPlayerClass()->GetClassIndex() == TF_CLASS_ENGINEER) && !m_Shared.GetCarriedObject()->ShouldBeActiveWhileCarried() )
 		{
 			CTFWeaponBase *pTFWeapon = dynamic_cast<CTFWeaponBase*>( pWeapon );
 			if ( pTFWeapon && (pTFWeapon->GetWeaponID() != TF_WEAPON_BUILDER) )
@@ -13244,12 +13329,6 @@ int CTFPlayerShared::GetSequenceForDeath( CBaseAnimating* pRagdoll, bool bBurnin
 {
 	if ( !pRagdoll )
 		return -1;
-
-	if ( TFGameRules() && TFGameRules()->IsMannVsMachineMode() )
-	{
-		if ( m_pOuter && ( m_pOuter->GetTeamNumber() == TF_TEAM_PVE_INVADERS ) )
-			return -1;
-	}
 
 	int iDeathSeq = -1;
 // 	if ( bBurning )

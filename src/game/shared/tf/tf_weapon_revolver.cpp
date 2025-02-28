@@ -40,6 +40,9 @@ BEGIN_DATADESC( CTFRevolver )
 END_DATADESC()
 #endif
 
+#ifdef CLIENT_DLL
+static ConVar tf_revolver_dynamic_crosshair("tf_revolver_dynamic_crosshair", "1", FCVAR_ARCHIVE, "Use a dynamic crosshair to show accuracy on the revolver.");
+#endif
 
 //=============================================================================
 //
@@ -70,7 +73,18 @@ bool CTFRevolver::DefaultReload( int iClipSize1, int iClipSize2, int iActivity )
 		}
 	}
 
-	if ( pPlayer->m_Shared.IsFeignDeathReady() )
+	bool bCanAttackWhileCloaked = false;
+#ifdef MCOMS_BALANCE_PACK
+	// L'Etranger can always attack
+	int iAddCloakOnHit = 0;
+	CALL_ATTRIB_HOOK_INT(iAddCloakOnHit, add_cloak_on_hit);
+	if (iAddCloakOnHit != 0)
+	{
+		bCanAttackWhileCloaked = true;
+	}
+#endif
+
+	if ( !bCanAttackWhileCloaked && pPlayer->m_Shared.IsFeignDeathReady() )
 		return false; // Can't reload if our feign death arm is up.
 
 	return BaseClass::DefaultReload( iClipSize1, iClipSize2, iActivity );
@@ -210,7 +224,7 @@ void CTFRevolver::GetWeaponCrosshairScale( float &flScale )
 	if ( !pTFPlayer )
 		return;
 
-	if ( CanHeadshot() )
+	if ( CanHeadshot() && tf_revolver_dynamic_crosshair.GetBool() )
 	{
 		float curtime = pTFPlayer->GetFinalPredictedTime() + ( gpGlobals->interpolation_amount * TICK_INTERVAL );
 		float flTimeSinceCheck = curtime - m_flLastAccuracyCheck;
