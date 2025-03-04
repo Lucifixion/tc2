@@ -9798,7 +9798,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	CALL_ATTRIB_HOOK_FLOAT( flRageScale, rage_giving_scale );
 
 	// Give the soldier/pyro some rage points for dealing/taking damage.
-	if ( bTookDamage && pTFAttacker != this && pTFAttacker->GetTeamNumber() != GetTeamNumber() )
+	if ( bTookDamage && pTFAttacker != this && !InSameTeam( pTFAttacker ) )
 	{
 		// Buff flag 1: we get rage when we deal damage. Here, that means the soldier that attacked
 		// gets rage when we take damage.
@@ -10080,7 +10080,7 @@ void CTFPlayer::OnDealtDamage( CBaseCombatCharacter *pVictim, const CTakeDamageI
 		}
 	}
 
-	if (pVictim->GetTeamNumber() == GetTeamNumber())
+	if ( InSameTeam(pVictim) )
 		return;
 
 	// Some item charge meters fill up on damage
@@ -11236,7 +11236,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		{
 			pWeapon->OnPlayerKill( pTFVictim, info );
 
-			if ( pTFVictim->GetTeamNumber() != GetTeamNumber() )
+			if ( !InSameTeam( pTFVictim ) )
 			{
 				int iCritBoost = 0;
 				CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iCritBoost, add_onkill_critboost_time );
@@ -11259,7 +11259,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		// Check for CP_Foundry achievements
 		if ( FStrEq( "cp_foundry", STRING( gpGlobals->mapname ) ) )
 		{
-			if ( pTFVictim && ( pTFVictim->GetTeamNumber() != GetTeamNumber() ) )
+			if ( !InSameTeam( pTFVictim ) )
 			{
 				if ( pTFVictim->IsCapturingPoint() )
 				{
@@ -11285,7 +11285,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		// Check for SD_Doomsday achievements		
 		if ( FStrEq( "sd_doomsday", STRING( gpGlobals->mapname ) ) )
 		{
-			if ( pTFVictim && ( pTFVictim->GetTeamNumber() != GetTeamNumber() ) )
+			if ( !InSameTeam( pTFVictim ) )
 			{
 				// find the flag in the map
 				CCaptureFlag *pFlag = NULL;
@@ -11342,7 +11342,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		// Check for CP_Snakewater achievement
 		if ( FStrEq( "cp_snakewater_final1", STRING( gpGlobals->mapname ) ) )
 		{
-			if ( pTFVictim && ( pTFVictim->GetTeamNumber() != GetTeamNumber() ) )
+			if ( !InSameTeam( pTFVictim ) )
 			{
 				if ( InAchievementZone( pTFVictim ) )
 				{
@@ -11359,7 +11359,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 
 		if ( IsPlayerClass( TF_CLASS_DEMOMAN ) )
 		{
-			if ( pVictim->GetTeamNumber() != GetTeamNumber() )
+			if ( !InSameTeam( pTFVictim ) )
 			{
 				// Check if this kill should refill the charge meter
 				CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase *>(info.GetWeapon());
@@ -11464,7 +11464,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		}
 
 		// Sniper Kill Rage
-		if ( IsPlayerClass( TF_CLASS_SNIPER ) )
+		if ( IsPlayerClass( TF_CLASS_SNIPER ) && !InSameTeam( pVictim ) )
 		{
 			// Item attribute
 			// Add Sniper Rage On Kills
@@ -11622,7 +11622,7 @@ void CTFPlayer::OnKilledOther_Effects( CBaseEntity *pVictim, const CTakeDamageIn
 		}
 	}
 
-	if ( pVictim->GetTeamNumber() == GetTeamNumber() )
+	if ( InSameTeam(pVictim) )
 		return;
 
 	CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase *>( info.GetWeapon() );
@@ -12153,7 +12153,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 		}
 
 		// Revenge Crits for Diamondback
-		if ( info.GetDamageCustom() == TF_DMG_CUSTOM_BACKSTAB && pPlayerAttacker->GetTeamNumber() != GetTeamNumber() )
+		if ( info.GetDamageCustom() == TF_DMG_CUSTOM_BACKSTAB && !InSameTeam( pPlayerAttacker ) )
 		{
 			pPlayerAttacker->m_Shared.IncrementRevengeCrits();
 		}
@@ -12411,7 +12411,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pPlayerAttacker )
 	{
-		if( pPlayerAttacker->GetTeamNumber() != GetTeamNumber() )
+		if( !InSameTeam(pPlayerAttacker) )
 		{
 			int iDropHealthOnKill = 0;
 			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayerAttacker, iDropHealthOnKill, drop_health_pack_on_kill );
@@ -15872,7 +15872,7 @@ void CTFPlayer::FeignDeath( const CTakeDamageInfo& info, bool bDeathnotice )
 	CTFPlayer *pTFPlayer = ToTFPlayer( info.GetAttacker() );
 	if ( pTFPlayer )
 	{
-		if( pTFPlayer->GetTeamNumber() != GetTeamNumber() )
+		if( !InSameTeam( pTFPlayer ) )
 		{
 			int iDropHealthOnKill = 0;
 			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pTFPlayer, iDropHealthOnKill, drop_health_pack_on_kill );

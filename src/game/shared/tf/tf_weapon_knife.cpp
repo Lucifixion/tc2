@@ -266,7 +266,7 @@ void CTFKnife::PrimaryAttack( void )
 	
 #ifdef GAME_DLL
 	
-	if ( m_hBackstabVictim.IsValid() && m_hBackstabVictim.Get()->GetTeamNumber() != pPlayer->GetTeamNumber() )
+	if ( m_hBackstabVictim.IsValid() && !GetTFPlayerOwner()->InSameTeam( m_hBackstabVictim.Get() ) )
 	{
 		int iSanguisuge = 0;
 		CALL_ATTRIB_HOOK_INT( iSanguisuge, sanguisuge );

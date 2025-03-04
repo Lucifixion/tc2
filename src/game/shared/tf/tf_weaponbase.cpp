@@ -5068,7 +5068,7 @@ void CTFWeaponBase::ApplyOnHitAttributes( CBaseEntity *pVictimBaseEntity, CTFPla
 
 	if ( pVictim )
 	{
-		if ( pVictim->GetTeamNumber() != GetTeamNumber() )
+		if ( !InSameTeam(pVictim) )
 		{
 			// Charge meter on hit
 			float flChargeRefill = 0.0f;

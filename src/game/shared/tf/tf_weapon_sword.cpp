@@ -329,6 +329,9 @@ int CTFSword::GetSwordHealthMod( void )
 //-----------------------------------------------------------------------------
 void CTFSword::OnDecapitation( CTFPlayer *pDeadPlayer )
 {
+	if ( GetTFPlayerOwner()->InSameTeam( pDeadPlayer ) )
+		return;
+
 	BaseClass::OnDecapitation( pDeadPlayer );
 
 #ifdef GAME_DLL
@@ -347,7 +350,7 @@ void CTFSword::OnDecapitation( CTFPlayer *pDeadPlayer )
 		{
 			iDecap += pDeadPlayer->m_Shared.GetDecapitations();
 
-			if ( pDeadPlayer->GetTeamNumber() != pOwner->GetTeamNumber() )
+			if ( !pOwner->InSameTeam(pDeadPlayer) )
 			{
 				iDecap++;
 			}

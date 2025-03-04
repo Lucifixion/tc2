@@ -10263,14 +10263,14 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 			if ( ePenetrateType == TF_DMG_CUSTOM_PENETRATE_MY_TEAM )
 			{
 				// Skip friendlies if we're looking for the first enemy
-				if ( GetTeamNumber() == pTarget->GetTeamNumber() && !friendlyfire.GetBool() )
+				if ( InSameTeam(pTarget) && !friendlyfire.GetBool())
 					continue;
 				
 				pTraceToUse = &trace;
 			}
 			else if ( ePenetrateType == TF_DMG_CUSTOM_PENETRATE_NONBURNING_TEAMMATE ) // Sydney Sleepers have unique player interactions.
 			{
-				if ( GetTeamNumber() == pTarget->GetTeamNumber() )
+				if ( InSameTeam(pTarget) )
 				{
 					if ( pTarget->IsPlayer() )
 					{

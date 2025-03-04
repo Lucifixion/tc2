@@ -1730,7 +1730,7 @@ void CTFSniperRifleDecap::OnPlayerKill( CTFPlayer *pVictim, const CTakeDamageInf
 	BaseClass::OnPlayerKill( pVictim, info );
 
 	CTFPlayer *pPlayer = ToTFPlayer( GetOwnerEntity() );
-	if ( pPlayer && IsHeadshot( info.GetDamageCustom() ) && pVictim->GetTeamNumber() != pPlayer->GetTeamNumber() )
+	if ( pPlayer && IsHeadshot( info.GetDamageCustom() ) && !pPlayer->InSameTeam(pVictim) )
 	{
 		// If we got a headshot kill, increment our number of decapitations.
 		int iDecaps = pPlayer->m_Shared.GetDecapitations() + 1;

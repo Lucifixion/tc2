@@ -365,7 +365,7 @@ void JarExplode( int iEntIndex, CTFPlayer *pAttacker, CBaseEntity *pOriginalWeap
 				continue;
 
 			// Drench the target.
-			if ( pPlayer != pAttacker && (pPlayer->GetTeamNumber() != iTeam || friendlyfire.GetBool()) )
+			if ( pPlayer != pAttacker && (!pAttacker->InSameTeam(pPlayer) || friendlyfire.GetBool()) )
 			{
 				if ( TFGameRules() && TFGameRules()->IsTruceActive() )
 					continue;
@@ -460,7 +460,7 @@ void JarExplode( int iEntIndex, CTFPlayer *pAttacker, CBaseEntity *pOriginalWeap
 					}
 				}
 			}
-			else
+			if ( pAttacker && pAttacker->InSameTeam(pPlayer) )
 			{
 				if ( pAttacker && pPlayer->m_Shared.InCond( TF_COND_BURNING ) )
 				{
@@ -596,7 +596,7 @@ void CTFProjectile_Jar::OnBreadMonsterHit( CBaseEntity *pOther, trace_t *pTrace 
 		return;
 
 	CTFPlayer *pVictim = ToTFPlayer( pOther );
-	if ( !pVictim || pVictim->GetTeamNumber() == GetTeamNumber() )
+	if ( !pVictim || (!pVictim->InSameTeam( this ) && !friendlyfire.GetBool()) )
 		return;
 
 	// This is a player on the other team, attach a breadmonster

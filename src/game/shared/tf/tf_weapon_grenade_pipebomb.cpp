@@ -877,7 +877,7 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 			}
 		}
 		// Blow up if we hit an enemy we can damage
-		else if ( pHitEntity->GetTeamNumber() && pHitEntity->GetTeamNumber() != GetTeamNumber() && pHitEntity->m_takedamage != DAMAGE_NO )
+		else if ( pHitEntity && (!InSameTeam(pHitEntity) || friendlyfire.GetBool()) && pHitEntity->m_takedamage != DAMAGE_NO)
 		{
 			SetThink( &CTFGrenadePipebombProjectile::Detonate );
 			SetNextThink( gpGlobals->curtime );

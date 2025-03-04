@@ -6833,7 +6833,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 		#endif
 	}
 
-	if ( pTFAttacker && pVictim && pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) && pTFAttacker->GetTeamNumber() != pVictim->GetTeamNumber() )
+	if ( pTFAttacker && pVictim && pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) && !pTFAttacker->InSameTeam(pVictim) )
 	{
 		if ( pTFAttacker->GetActiveWeapon() )
 		{
@@ -7566,7 +7566,7 @@ float CTFGameRules::ApplyOnDamageAliveModifyRules( const CTakeDamageInfo &info, 
 			}
 
 			// Don't give scouts hype for being total asswads
-			if ( pTFAttacker->GetTeamNumber() != pVictim->GetTeamNumber() )
+			if ( !pTFAttacker->InSameTeam(pVictim) )
 			{
 				int iHypeOnDamage = 0;
 				CALL_ATTRIB_HOOK_INT_ON_OTHER( pTFAttacker, iHypeOnDamage, hype_on_damage );
