@@ -893,7 +893,7 @@ void CAchievementMgr::AwardAchievement( int iAchievementID )
 
 	if ( !pAchievement->AlwaysEnabled() && !CheckAchievementsEnabled() )
 	{
-		Msg( "Achievements disabled, ignoring achievement unlock for %s\n", pAchievement->GetName() );
+		DevWarning( "Achievements disabled, ignoring achievement unlock for %s\n", pAchievement->GetName() );
 		return;
 	}
 
@@ -901,7 +901,7 @@ void CAchievementMgr::AwardAchievement( int iAchievementID )
 	{
 		if ( cc_achievement_debug.GetInt() > 0 )
 		{
-			Msg( "Achievement award called but already achieved: %s\n", pAchievement->GetName() );
+			DevWarning( "Achievement award called but already achieved: %s\n", pAchievement->GetName() );
 		}
 		return;
 	}
@@ -978,7 +978,7 @@ void CAchievementMgr::UpdateAchievement( int iAchievementID, int nData )
 
 	if ( !pAchievement->AlwaysEnabled() && !CheckAchievementsEnabled() )
 	{
-		Msg( "Achievements disabled, ignoring achievement update for %s\n", pAchievement->GetName() );
+		DevWarning( "Achievements disabled, ignoring achievement update for %s\n", pAchievement->GetName() );
 		return;
 	}
 
@@ -986,7 +986,7 @@ void CAchievementMgr::UpdateAchievement( int iAchievementID, int nData )
 	{
 		if ( cc_achievement_debug.GetInt() > 0 )
 		{
-			Msg( "Achievement update called but already achieved: %s\n", pAchievement->GetName() );
+			DevWarning( "Achievement update called but already achieved: %s\n", pAchievement->GetName() );
 		}
 		return;
 	}
@@ -1028,7 +1028,7 @@ bool CAchievementMgr::CheckAchievementsEnabled()
 	// if PC, Steam must be running and user logged in
 	if ( IsPC() && !LoggedIntoSteam() )
 	{
-		Msg( "Achievements disabled: Steam not running.\n" );
+		DevWarning( "Achievements disabled: Steam not running.\n" );
 		return false;
 	}
 
@@ -1036,7 +1036,7 @@ bool CAchievementMgr::CheckAchievementsEnabled()
 	uint state = XUserGetSigninState( XBX_GetPrimaryUserId() );
 	if ( state == eXUserSigninState_NotSignedIn )
 	{
-		Msg( "Achievements disabled: not signed in to XBox user account.\n" );
+		DevWarning( "Achievements disabled: not signed in to XBox user account.\n" );
 		return false;
 	}
 #endif
@@ -1044,7 +1044,7 @@ bool CAchievementMgr::CheckAchievementsEnabled()
 	// can't be in commentary mode, user is invincible
 	if ( IsInCommentaryMode() )
 	{
-		Msg( "Achievements disabled: in commentary mode.\n" );
+		DevWarning( "Achievements disabled: in commentary mode.\n" );
 		return false;
 	}
 
@@ -1052,7 +1052,7 @@ bool CAchievementMgr::CheckAchievementsEnabled()
 	// achievements disabled if playing demo
 	if ( engine->IsPlayingDemo() )
 	{
-		Msg( "Achievements disabled: demo playing.\n" );
+		DevWarning( "Achievements disabled: demo playing.\n" );
 		return false;
 	}
 #endif // CLIENT_DLL
@@ -1109,7 +1109,7 @@ bool CAchievementMgr::CheckAchievementsEnabled()
 			// on Steam public
 			if ( developer.GetInt() == 0 || ( k_EUniverseInvalid == GetUniverse() ) || ( k_EUniversePublic == GetUniverse() ) )
 			{
-				Msg( "Achievements disabled: cheats turned on in this app session.\n" );
+				DevWarning( "Achievements disabled: cheats turned on in this app session.\n" );
 				return false;
 			}
 #endif
@@ -1321,7 +1321,7 @@ void CAchievementMgr::ResetAchievements()
 
 	if ( !LoggedIntoSteam() )
 	{
-		Msg( "Steam not running, achievements disabled. Cannot reset achievements.\n" );
+		DevWarning( "Steam not running, achievements disabled. Cannot reset achievements.\n" );
 		return;
 	}
 
@@ -1353,7 +1353,7 @@ void CAchievementMgr::ResetAchievement( int iAchievementID )
 
 	if ( !LoggedIntoSteam() )
 	{
-		Msg( "Steam not running, achievements disabled. Cannot reset achievements.\n" );
+		DevWarning( "Steam not running, achievements disabled. Cannot reset achievements.\n" );
 		return;
 	}
 
@@ -1382,7 +1382,7 @@ void CAchievementMgr::PrintAchievementStatus()
 {
 	if ( IsPC() && !LoggedIntoSteam() )
 	{
-		Msg( "Steam not running, achievements disabled. Cannot view or unlock achievements.\n" );
+		DevWarning( "Steam not running, achievements disabled. Cannot view or unlock achievements.\n" );
 		return;
 	}
 

@@ -201,7 +201,7 @@ void CBaseAchievement::IncrementCount( int iOptIncrement )
 	{
 		if ( !AlwaysEnabled() && !m_pAchievementMgr->CheckAchievementsEnabled() )
 		{
-			Msg( "Achievements disabled, ignoring achievement progress for %s\n", GetName() );
+			DevWarning( "Achievements disabled, ignoring achievement progress for %s\n", GetName() );
 			return;
 		}
 
@@ -421,7 +421,7 @@ void CBaseAchievement::EnsureComponentBitSetAndEvaluate( int iBitNumber )
 	{				
 		if ( !AlwaysEnabled() && !m_pAchievementMgr->CheckAchievementsEnabled() )
 		{
-			Msg( "Achievements disabled, ignoring achievement component for %s\n", GetName() );
+			DevWarning( "Achievements disabled, ignoring achievement component for %s\n", GetName() );
 			return;
 		}
 
