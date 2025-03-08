@@ -15,9 +15,23 @@
 #include "tf_party.h"
 #include "ienginevgui.h"
 #include "clientmode_tf.h"
+#include "ServerBrowser/IServerBrowser.h"
 
 using namespace vgui;
 using namespace GCSDK;
+
+static CDllDemandLoader g_ServerBrowser( "ServerBrowser" );
+static IServerBrowser *GetServerBrowser()
+{
+	static IServerBrowser *pServerBrowser = NULL;
+	if ( pServerBrowser == NULL )
+	{
+		int iReturnCode;
+		pServerBrowser = (IServerBrowser *)g_ServerBrowser.GetFactory()( SERVERBROWSER_INTERFACE_VERSION, &iReturnCode );
+		Assert( pServerBrowser );
+	}
+	return pServerBrowser;
+}
 
 bool BSteamIDIsPlayingTF2( const CSteamID& steamID )
 {
@@ -88,7 +102,7 @@ void CSteamFriendPanel::OnCommand( const char *command )
 		{
 			if ( gameInfo.m_gameID.AppID() == (uint32)engine->GetAppID() )
 			{
-				bool bTheyAreInACommunityServer = false;
+				bool bTheyAreInACommunityServer = true;
 				if ( bTheyAreInACommunityServer )
 				{
 					contextMenuBuilder.AddMenuItem( "#TF_Friends_JoinServer", new KeyValues( "Context_JoinServer" ), "server" );
@@ -131,7 +145,7 @@ void CSteamFriendPanel::DoJoinParty()
 
 void CSteamFriendPanel::DoJoinServer()
 {
-	// TODO: Prompt to disconnect, potentially, then join
+	GetServerBrowser()->OpenGameInfoDialog( m_steamID.ConvertToUint64(), "" );
 }
 
 void CSteamFriendPanel::DoInviteToParty()
