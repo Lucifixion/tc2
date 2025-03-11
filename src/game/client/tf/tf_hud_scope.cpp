@@ -171,12 +171,12 @@ void CHudScopeCharge::Paint( void )
 	if ( !pPlayer )
 		return;
 
-	if ( !pPlayer->m_Shared.InCond( TF_COND_ZOOMED ) )
-		return;
-
 	// Make sure the current weapon is a sniper rifle
 	CTFSniperRifle *pWeapon = assert_cast<CTFSniperRifle*>(pPlayer->GetActiveTFWeapon());
 	if ( !pWeapon )
+		return;
+
+	if ( !pPlayer->m_Shared.InCond( TF_COND_ZOOMED ) && !dynamic_cast<CTFSniperRifleClassic*>(pWeapon) )
 		return;
 
 	if ( pWeapon->IsJarateRifle() && !m_bJarateMode )
